@@ -11,10 +11,10 @@
     https://cloud.llamaindex.ai/
    ```
 
-3. **Set the environment variable to the API key**
+3. **Set the environment variable to the API key**  
     LLAMA_PARSE_API_KEY="YOUR_API_KEY"
 
-4. **Start Parsing the data using command line arguments
+4. **Start Parsing the data using command line arguments**  
     Make sure your qdrant database is running
     ```
     python Json_Ingestion.py "YOUR_DIRECTORY_OF_BRs" "QDRANT_COLLECTION_NAME"
