@@ -30,3 +30,9 @@ Passing in different command line arguments allows different functionalities
    - agreement_ingestion.py contains the code to parse agreement approvals
    - BRD_ingestion.py contains the code to parse BRDs
    - utils.py contains common utility functions shared by some of files
+
+## To-Do
+   - need a better tool/library to extract data from tables inside PDFs
+   - better chunking technique?
+
+
