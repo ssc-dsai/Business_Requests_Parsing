@@ -34,4 +34,3 @@ Passing in different command line arguments allows different functionalities
 ## To-Do
    - need a better tool/library to extract data from tables inside PDFs
    - better chunking technique?
-   - not 100% accurate (number in section 3.14 of the Computing worksheet in BRD of BR70067 cannot be detected)
