@@ -1,21 +1,13 @@
-## Installation and Setup
+## Business Requests Parsing
 
-1. **Installing Dependencies (Developed Under Python 3.11.4)**
+# Overview
+This repository contains the tool to parse business requirements document and agreement aprovals under a business request directory.
+The tool is essentially a pipeline that processes data inside PDF and Excel Files, applys embeddings, and stores them in a Qdrant Databse.
+The business requirements document pipeline also uses a classification model to apply labels to all the images extracted from an Excel Worksheet.
+
+# Installing Dependencies (Developed Under Python 3.11.4)
    ```
    pip install -r requirements.txt
    ```
-   
-2. **Obtain an API Key from LLamaParse**
 
-   ```
-    https://cloud.llamaindex.ai/
-   ```
-
-3. **Set the environment variable to the API key**  
-    LLAMA_PARSE_API_KEY="YOUR_API_KEY"
-
-4. **Start Parsing the data using command line arguments**  
-    Make sure your qdrant database is running
-    ```
-    python Json_Ingestion.py "YOUR_DIRECTORY_OF_BRs" "QDRANT_COLLECTION_NAME"
-    ```
+# Usage
