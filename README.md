@@ -12,10 +12,17 @@ The business requirements document pipeline also uses a classification model to 
 
 ## Usage
 ```
-python3 "file_name_of_tool" "path_of_BR_directory" "collection_name"  
+python3 file_name_of_tool path_of_BR_directory collection_name 
 ```
 
 Passing in different command line arguments allows different functionalities
+
+## Example Usage
+```
+python3 BRD_ingestion.py ./Output BR_JSON
+```
+
+This command parses all the Business Requirements Document under the Output directory and stores it in a Qdrant collection named "BR_JSON"
 
 ## Command Line Options
 1. **Available Tools**
