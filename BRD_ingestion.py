@@ -5,6 +5,7 @@ import pandas as pd
 import os
 import sys
 import json
+import re
 
 from math import isnan
 from typing import List, Callable
@@ -25,6 +26,9 @@ def keep_text_only(cell):
     
 def excel_to_table(file_dir: str, sheetnames: List[str], keep_text_only: Callable) -> List[List[List[str]]]:
     sheets = []
+    is_BRD = False
+    BRD_pattern = re.compile(re.escape("Business Requirements Document"), re.IGNORECASE)
+
     for sheetname in sheetnames:
         df = pd.read_excel(file_dir, sheet_name=sheetname)
         cleaned_df = df.dropna(how='all')
@@ -38,12 +42,20 @@ def excel_to_table(file_dir: str, sheetnames: List[str], keep_text_only: Callabl
                 if (text_only_df.iloc[i, j] == None):
                     continue
                 
-                elif (text_only_df.iloc[i, j] == 'Select…'):
+                if (text_only_df.iloc[i, j] == 'Select…'):
                     text_only_df.iloc[i, j] = 'None'
+
+                if (bool(BRD_pattern.search(text_only_df.iloc[i, j]))):
+                    is_BRD = True
                 row.append(text_only_df.iloc[i, j])
         
             sheet.append(row)        
         sheets.append(sheet)
+        
+    #Return only BRDs for now
+    if (not is_BRD):
+        return []
+    
     return sheets
 
 def table_to_nodes(
@@ -56,6 +68,7 @@ def table_to_nodes(
     nodes = []
     idx = 0
     file_name = file_dir[file_dir.rfind('/') + 1:]
+    float_pattern = r'-?\d+\.\d+'
     
     for sheet in sheets:
         sheet_to_dict = {index: row for index, row in enumerate(sheet)}
@@ -76,11 +89,21 @@ def table_to_nodes(
             else:
                 header = row[0] + ' ' + row[1]
                 item[header] = row[2:]
-                            
+            
+            floats = re.findall(float_pattern, header)
+            #Assume that the first number found in the header is the section number
+            if len(floats) > 0:
+                section = [float(num) for num in floats][0]
+                if (section % 2 == 1.0 and section >= 3.0):
+                    metadata = {"category": "BRD", "BR": BR, "filetype": "Spreadsheet", "source": file_name, "sheetname": sheetnames[idx]}
+                    nodes.append(TextNode(text=json.dumps(refined_sheet), metadata=metadata))
+                    refined_sheet = {}
+
             refined_sheet[index] = item
-    
-        metadata = {"category": "BRD", "BR": BR, "filetype": "Spreadsheet", "source": file_name, "sheetname": sheetnames[idx]}
-        nodes.append(TextNode(text=json.dumps(refined_sheet), metadata=metadata))
+
+        if (len(refined_sheet) > 0) :
+            metadata = {"category": "BRD", "BR": BR, "filetype": "Spreadsheet", "source": file_name, "sheetname": sheetnames[idx]}
+            nodes.append(TextNode(text=json.dumps(refined_sheet), metadata=metadata))
         
         idx += 1
     return nodes
