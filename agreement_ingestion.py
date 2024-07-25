@@ -17,8 +17,8 @@ def agreements_ingestion(in_dir: str, directories: List[str], reader: PyMuPDFRea
     BRs_with_agreements = []
 
     reg_compile = re.compile(".*Sign Off.*")
-    for dir in directories:
-        full_dir = f"{in_dir}/{dir}"   
+    for directory in directories:
+        full_dir = f"{in_dir}/{directory}"   
         try:
             results = []
             for dirpath, dirnames, filenames in os.walk(full_dir):
@@ -26,7 +26,7 @@ def agreements_ingestion(in_dir: str, directories: List[str], reader: PyMuPDFRea
                     results.append(dirpath)
 
             if len(results) == 0:
-                print(f"No sign off agreements in {dir}")
+                print(f"No sign off agreements in {directory}")
                 continue
 
             # for now assume that there is only one sign off folder in each BR if there is one
@@ -37,18 +37,18 @@ def agreements_ingestion(in_dir: str, directories: List[str], reader: PyMuPDFRea
                     ]
             
             if len(files) == 0:
-                print(f"No sign off agreements in {dir}")
+                print(f"No sign off agreements in {directory}")
                 continue
             else:
-                BRs_with_agreements.append(dir)
+                BRs_with_agreements.append(directory)
 
             for file in files:
-                nodes = pdf_to_nodes(file_dir=f"{sign_off_dir}/{file}", BR=dir, category="Agreements", reader=reader)
+                nodes = pdf_to_nodes(file_dir=f"{sign_off_dir}/{file}", BR=directory, category="Agreements", reader=reader)
                 agreements += nodes
 
         
         except FileNotFoundError:
-            print(f"File does not exist in {dir}")
+            print(f"File does not exist in {directory}")
     
     print(f"BRs with Agreements: {BRs_with_agreements}")
     return agreements

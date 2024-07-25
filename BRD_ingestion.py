@@ -111,15 +111,15 @@ def table_to_nodes(
 def BRD_ingestion(in_dir: str, directories: List[str], reader: PyMuPDFReader) -> List[TextNode]:
     print("---------- Processing BRDs ----------")
     word_vec = []
-    for dir in directories:
-        BRD_dir = f"{in_dir}/{dir}/BRD"
+    for directory in directories:
+        BRD_dir = f"{in_dir}/{directory}/BRD"
         try:
             pdf_files = [file for file in os.listdir(BRD_dir) 
                     if file.endswith(".pdf") #this assumes that all BRD files in pdf format has "BRD" in their filenames
                     ]
             
             if (len(pdf_files) == 0):
-                print(f"{dir} is empty")
+                print(f"{directory} is empty")
                 continue
 
             #older BRDs exist in Excel formats
@@ -135,7 +135,7 @@ def BRD_ingestion(in_dir: str, directories: List[str], reader: PyMuPDFReader) ->
                 sheetnames = [sheet.title for sheet in excel_file.book.worksheets if sheet.sheet_state == "visible"]
                 
                 sheets = excel_to_table(file_dir=f"{BRD_dir}/{file}", sheetnames=sheetnames, keep_text_only=keep_text_only)
-                nodes = table_to_nodes(file_dir=f"{BRD_dir}/{file}", sheetnames=sheetnames, sheets=sheets, BR=dir)
+                nodes = table_to_nodes(file_dir=f"{BRD_dir}/{file}", sheetnames=sheetnames, sheets=sheets, BR=directory)
 
                 word_vec += nodes
                 used_files.append(filename)
@@ -143,11 +143,11 @@ def BRD_ingestion(in_dir: str, directories: List[str], reader: PyMuPDFReader) ->
             #Newer BRDs only exist in PDF forms
             new_BRDs = [file for file in pdf_files if file[:file.rfind('.')] not in used_files]
             for file in new_BRDs:
-                nodes = pdf_to_nodes(file_dir=f"{BRD_dir}/{file}", BR=dir, category="BRD", reader=reader)
+                nodes = pdf_to_nodes(file_dir=f"{BRD_dir}/{file}", BR=directory, category="BRD", reader=reader)
                 word_vec += nodes
                 
         except FileNotFoundError:
-            print(f"File does not exist in {dir}")
+            print(f"File does not exist in {directory}")
 
     return word_vec
 
