@@ -8,14 +8,19 @@ description: A pipeline for retrieving relevant information from a knowledge bas
 requirements: llama-index
 """
 
+import qdrant_client
+import os
+import re
+
 from typing import List, Union, Generator, Iterator
-from llama_index.core import PromptTemplate, get_response_synthesizer
-from llama_index.core.vector_stores import MetadataFilter
-from llama_index.core.vector_stores import MetadataFilters
+from llama_index.core import PromptTemplate, get_response_synthesizer, VectorStoreIndex, Settings, set_global_handler
+from llama_index.core.vector_stores import MetadataFilter, MetadataFilters, FilterCondition
+from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_index.core.retrievers import BaseRetriever
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.postprocessor import LLMRerank
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.fastembed import FastEmbedEmbedding
 from dotenv import load_dotenv
 
 class Pipeline:
@@ -23,89 +28,82 @@ class Pipeline:
         pass
 
     async def on_startup(self):
-        import os
-
-        # Set the OpenAI API key Here
         load_dotenv()
         os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
-        from llama_index.core import VectorStoreIndex, Settings, set_global_handler
-        from llama_index.vector_stores.qdrant import QdrantVectorStore
-        from llama_index.llms.openai import OpenAI
-        from llama_index.embeddings.fastembed import FastEmbedEmbedding
-        import qdrant_client
 
+        #if running this pipeline using docker, then host should be host.docker.internal, otherwise it should be localhost
         client = qdrant_client.QdrantClient(
              host='host.docker.internal', port=6333
         )
  
-        #adjusting model for querying and embedding
+        #this adjusts the large language model that will be used for querying and embedding
         embed_model = FastEmbedEmbedding("mixedbread-ai/mxbai-embed-large-v1")
-        llm = OpenAI(model=os.getenv("OPENAI_MODEL"), request_timeout=360, max_tokens=1024,  temperature=0.3)
+        llm = OpenAI(model=os.getenv("OPENAI_MODEL"), request_timeout=180, max_tokens=2048)
+
         Settings.embed_model = embed_model
         Settings.llm = llm
 
-        storage_name = os.getenv("COLLECTION_NAME") #storage of the embeddings
-        vector_store = QdrantVectorStore(client=client, collection_name=storage_name, parallel=2)
-        
-        self.index = VectorStoreIndex.from_vector_store(vector_store=vector_store, embed_model=embed_model, show_progress=True)
-        self.llm = llm
         self.embed_model = embed_model
-        # This function is called when the server is started.
+        self.llm = llm
+
+        BR_summaries_vector_store = QdrantVectorStore(
+            collection_name=os.getenv("BR_SUMMARIES_COLLECTION_NAME"),
+            client=client,
+        )
+
+        BR_details_vector_store = QdrantVectorStore(
+            collection_name=os.getenv("BR_DETAILS_COLLECTION_NAME"),
+            client=client,
+        )
+
+        self.BR_summaries_index = VectorStoreIndex.from_vector_store(
+            BR_summaries_vector_store, 
+            embed_model=embed_model, 
+            show_progress=True
+        )
+        
+        self.BR_details_index = VectorStoreIndex.from_vector_store(
+            BR_details_vector_store, 
+            embed_model=embed_model, 
+            show_progress=True
+        )
+
         pass
 
     async def on_shutdown(self):
-        # This function is called when the server is stopped.
         pass
 
     def pipe(
         self, user_message: str, model_id: str, messages: List[dict], body: dict
     ) -> Union[str, Generator, Iterator]:
         # This is where you can add your custom RAG pipeline.
-        # Typically, you would retrieve relevant information from your knowledge base and synthesize it to generate a response.
-   # set up prompt template as well
-
-        BR = None
-        if "<" in user_message and ">" in user_message:
-            start_idx = user_message.index("<")
-            end_idx = user_message.index(">")
-        else:
-            start_idx = -1
-            end_idx = -1
-
-        if start_idx != -1 and end_idx != -1:
-            BR = user_message[start_idx + 1:end_idx]
-            user_message = user_message[end_idx + 1:]
-            print(user_message)
-    
         response_synthesizer = get_response_synthesizer(streaming=True)
 
-        if BR is not None:
-            filter = MetadataFilter(key="BR", value=BR)
-            filters = MetadataFilters(filters=[filter])
+        BR_pattern = r'BR\d+'
+        BR_summaries_query_engine = self.BR_summaries_index.as_query_engine(similarity_top_k=10)
 
-            #fix top_k retrieval
-            retriever = HybridRetriever(self.index.as_retriever(similarity_top_k=10, filters=filters), top_k=10)
-            query_engine = RetrieverQueryEngine(
-                retriever = retriever,
-                response_synthesizer=response_synthesizer
-            )
-        else:
-            retriever = HybridRetriever(self.index.as_retriever(similarity_top_k=10), top_k=10)
-            query_engine = RetrieverQueryEngine(
-                retriever = retriever,
-                response_synthesizer=response_synthesizer
-            )
+        summaries_response = BR_summaries_query_engine.query(user_message).response
+        relevant_BRs = re.findall(BR_pattern, summaries_response + " " + user_message)
+        
+        filters = [MetadataFilter(key="BR", value=BR) for BR in relevant_BRs]
+        filters = MetadataFilters(filters=filters, condition=FilterCondition.OR)
+        
+        retriever = HybridRetriever(self.BR_details_index.as_retriever(similarity_top_k=10, filters=filters), top_k=10)
+        query_engine = RetrieverQueryEngine(
+            retriever = retriever,
+            response_synthesizer=response_synthesizer
+        )
 
         query_engine.update_prompts(
             {"response_synthesizer:text_qa_template": make_template()}
         )
 
-        response = query_engine.query(user_message)
+        response = query_engine.query(user_message + " " + summaries_response)
         return response.response_gen
     
-def make_template():
-    prompt = """\
+def make_template() -> PromptTemplate:
+    prompt = f"""\
             HUMAN
             You are an assistant for question-answering tasks. 
             Use the following pieces of retrieved context to answer the question.
@@ -113,10 +111,10 @@ def make_template():
             Make sure you provide the source of your answer, which is the file that your information comes from.
             Context information is below.
             ---------------------
-            {context_str}
+            {{context_str}}
             ---------------------
             Given the context information and not prior knowledge, answer the query.
-            Query: {query_str}
+            Query: {{query_str}}
             Answer: \
             """
 

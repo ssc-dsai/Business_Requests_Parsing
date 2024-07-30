@@ -7,16 +7,18 @@ import sys
 import json
 import re
 
+from dotenv import load_dotenv
 from math import isnan
 from typing import List, Callable
 from utils import pdf_to_nodes
 
-from llama_index.core import VectorStoreIndex, Settings, StorageContext
+from llama_index.core import VectorStoreIndex, Settings, StorageContext, SummaryIndex
 from llama_index.core.schema import TextNode
 from llama_index.embeddings.fastembed import FastEmbedEmbedding
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_index.readers.file import PyMuPDFReader
 from qdrant_client import QdrantClient
+from llama_index.llms.openai import OpenAI
 
 def keep_text_only(cell):
     if isinstance(cell, float) and isnan(cell):
@@ -151,7 +153,25 @@ def BRD_ingestion(in_dir: str, directories: List[str], reader: PyMuPDFReader) ->
 
     return word_vec
 
+def generate_summaries(directories, BRDs):
+    summaries = []
+    for directory in directories:
+        nodes = [node for node in BRDs if node.metadata['BR'] == directory]
+        index = SummaryIndex(nodes)
+        query_engine = index.as_query_engine(
+            response_mode="tree_summarize", 
+            use_async=True, 
+            llm=Settings.llm 
+        )
+        response = query_engine.query("Please summarize this document and provide details about the request, key contacts, required services, project timelines, constraints, funding information, project management details, network and telecom requirements, security considerations, approval processes, service line details, location of the service required, and implementation activities.")
+        node = TextNode(text=response.response, metadata={"BR": directory})
+        summaries.append(node)
+    
+    return summaries
+
 if __name__ == "__main__":
+    load_dotenv()
+
     reader = PyMuPDFReader()
     in_dir = sys.argv[1]
     directories = os.listdir(in_dir)
@@ -159,12 +179,36 @@ if __name__ == "__main__":
 
     embed_model = FastEmbedEmbedding("mixedbread-ai/mxbai-embed-large-v1")
     Settings.embed_model = embed_model
+    Settings.llm = OpenAI(model="gpt-4o-mini", request_timeout=180, max_tokens=2048)
 
     client = QdrantClient(host="localhost", port=6333)
 
-    vector_store = QdrantVectorStore(collection_name=sys.argv[2], client=client)
+    summaries = generate_summaries(directories, BRDs)
+    
+    summaries_vector_store = QdrantVectorStore(
+        collection_name=sys.argv[2],
+        client=client,
+    )
 
-    storage_context = StorageContext.from_defaults(vector_store=vector_store)
-    index = VectorStoreIndex(nodes=BRDs, storage_context=storage_context, embed_model=embed_model, show_progress=True)
+    details_vector_store = QdrantVectorStore(
+        collection_name=sys.argv[3],
+        client=client,
+    )
 
+    summaries_storage_context = StorageContext.from_defaults(vector_store=summaries_vector_store)
+    details_storage_context = StorageContext.from_defaults(vector_store=details_vector_store)
+
+    summaries_index = VectorStoreIndex(
+        nodes=summaries, 
+        storage_context=summaries_storage_context, 
+        embed_model=embed_model, 
+        show_progress=True
+    )
+
+    details_index = VectorStoreIndex(
+        nodes=BRDs, 
+        storage_context=details_storage_context, 
+        embed_model=embed_model, 
+        show_progress=True
+    )
 
