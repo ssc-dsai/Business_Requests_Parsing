@@ -15,7 +15,7 @@ The business requirements document pipeline also generate a summary for each bus
 python3 file_name_of_tool path_of_BR_directory BR_summary_collection_name BR_details_collection_name
 ```
 
-![alt text](https://github.com/ssc-dsai/Business_Requests_Parsing/blob/main/example.png)
+![alt text](https://github.com/ssc-dsai/Business_Requests_Parsing/blob/main/example.png)  
 A directory of business requests should look similiar to the image above
 Passing in different command line arguments allows different functionalities
 
