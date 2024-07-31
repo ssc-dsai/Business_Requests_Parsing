@@ -9,7 +9,7 @@ import re
 
 from dotenv import load_dotenv
 from math import isnan
-from typing import List, Callable
+from typing import List, Tuple
 from utils import pdf_to_nodes
 
 from llama_index.core import VectorStoreIndex, Settings, StorageContext, SummaryIndex
@@ -19,152 +19,206 @@ from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_index.readers.file import PyMuPDFReader
 from qdrant_client import QdrantClient
 from llama_index.llms.openai import OpenAI
+from pandas import DataFrame
 
 def keep_text_only(cell):
     if isinstance(cell, float) and isnan(cell):
         return None
 
     return cell if isinstance(cell, str) else str(cell)
-    
-def excel_to_table(file_dir: str, sheetnames: List[str], keep_text_only: Callable) -> List[List[List[str]]]:
-    sheets = []
+
+def extract_worksheet(worksheet_dataframe: DataFrame) -> Tuple[List[List[str]], bool]:
+    num_rows = len(worksheet_dataframe)
+    worksheet = []
+
     is_BRD = False
     BRD_pattern = re.compile(re.escape("Business Requirements Document"), re.IGNORECASE)
 
-    for sheetname in sheetnames:
-        df = pd.read_excel(file_dir, sheet_name=sheetname)
-        cleaned_df = df.dropna(how='all')
-        text_only_df = cleaned_df.map(keep_text_only)
-        sheet = []
-        for i in range(len(text_only_df)):
-            row = []
-            num_columns = len(text_only_df.columns)
+    for row_num in range(num_rows):
+        row = []
+            
+        num_columns = len(worksheet_dataframe.columns)
                     
-            for j in range(num_columns):
-                if (text_only_df.iloc[i, j] == None):
-                    continue
-                
-                if (text_only_df.iloc[i, j] == 'Select…'):
-                    text_only_df.iloc[i, j] = 'None'
+        for column_num in range(num_columns):
+            if (worksheet_dataframe.iloc[row_num, column_num] == None):
+                continue  
+            elif (worksheet_dataframe.iloc[row_num, column_num] == 'Select…'):
+                worksheet_dataframe.iloc[row_num, column_num] = 'None'
 
-                if (bool(BRD_pattern.search(text_only_df.iloc[i, j]))):
-                    is_BRD = True
-                row.append(text_only_df.iloc[i, j])
+            if (bool(BRD_pattern.search(worksheet_dataframe.iloc[row_num, column_num]))):
+                is_BRD = True
+
+            row.append(worksheet_dataframe.iloc[row_num, column_num])
         
-            sheet.append(row)        
-        sheets.append(sheet)
+        worksheet.append(row)
+    
+    return worksheet, is_BRD
+    
+def excel_to_table(file_directory: str, sheet_names: List[str]) -> List[List[List[str]]]:
+    worksheets = []
+    is_BRD = False
+
+    for sheet_name in sheet_names:
+        uncleaned_data = pd.read_excel(file_directory, sheet_name=sheet_name)
+        processed_data = uncleaned_data.dropna(how='all')
+        text_only_data = processed_data.map(keep_text_only)
+        worksheet, is_BRD = extract_worksheet(text_only_data)
+        worksheets.append(worksheet)
         
     #Return only BRDs for now
     if (not is_BRD):
         return []
     
-    return sheets
+    return worksheets
 
-def table_to_nodes(
-    file_dir: str, 
-    sheetnames: List[str], 
-    sheets: List[List[List[str]]], 
-    BR: str
+def worksheet_to_nodes(
+    worksheet: List[List[str]], 
+    worksheet_index: int, 
+    business_request: str, 
+    file_name: str, 
+    sheet_names: List[str]
 ) -> List[TextNode]:
     
     nodes = []
-    idx = 0
-    file_name = file_dir[file_dir.rfind('/') + 1:]
+    sheet_to_dict = {row_num: row for row_num, row in enumerate(worksheet)}
+    cleaned_sheet = {}
     float_pattern = r'-?\d+\.\d+'
+            
+    #This section converts the table into JSON format
+    for row_num, row in sheet_to_dict.items():
+        row_content = {}
+
+        if len(row) == 0:
+            continue
+        elif len(row) == 1:
+            header = row[0]
+            row_content[header] = []
+        elif len(row) == 2:
+            header = row[0] + ' ' + row[1]
+            row_content[header] = []
+        else:
+            header = row[0] + ' ' + row[1]
+            row_content[header] = row[2:]
+            
+        floats = re.findall(float_pattern, header)
+        #Assume that the first number found in the header is the section number
+        if len(floats) > 0:
+            section = float(floats[0])
+            #this divides the worksheet by sections
+            if (section % 2 == 1.0 and section >= 3.0):
+                metadata = {
+                    "category": "BRD", 
+                    "BR": business_request, 
+                    "filetype": "Spreadsheet", 
+                    "source": file_name, 
+                    "sheetname": sheet_names[worksheet_index]
+                }
+                nodes.append(TextNode(text=json.dumps(cleaned_sheet), metadata=metadata))
+                cleaned_sheet = {}
+
+        cleaned_sheet[row_num] = row_content
+
+    if (len(cleaned_sheet) > 0) :
+        metadata = {
+            "category": "BRD", 
+            "BR": business_request, 
+            "filetype": "Spreadsheet", 
+            "source": file_name, 
+            "sheetname": sheet_names[worksheet_index]
+        }
+        nodes.append(TextNode(text=json.dumps(cleaned_sheet), metadata=metadata))
     
-    for sheet in sheets:
-        sheet_to_dict = {index: row for index, row in enumerate(sheet)}
-        refined_sheet = {}
-            
-        #This section converts the table into JSON format
-        for index, row in sheet_to_dict.items():
-            item = {}
-
-            if len(row) == 0:
-                continue
-            elif len(row) == 1:
-                header = row[0]
-                item[header] = []
-            elif len(row) == 2:
-                header = row[0] + ' ' + row[1]
-                item[header] = []
-            else:
-                header = row[0] + ' ' + row[1]
-                item[header] = row[2:]
-            
-            floats = re.findall(float_pattern, header)
-            #Assume that the first number found in the header is the section number
-            if len(floats) > 0:
-                section = [float(num) for num in floats][0]
-                if (section % 2 == 1.0 and section >= 3.0):
-                    metadata = {"category": "BRD", "BR": BR, "filetype": "Spreadsheet", "source": file_name, "sheetname": sheetnames[idx]}
-                    nodes.append(TextNode(text=json.dumps(refined_sheet), metadata=metadata))
-                    refined_sheet = {}
-
-            refined_sheet[index] = item
-
-        if (len(refined_sheet) > 0) :
-            metadata = {"category": "BRD", "BR": BR, "filetype": "Spreadsheet", "source": file_name, "sheetname": sheetnames[idx]}
-            nodes.append(TextNode(text=json.dumps(refined_sheet), metadata=metadata))
-        
-        idx += 1
     return nodes
 
-def BRD_ingestion(in_dir: str, directories: List[str], reader: PyMuPDFReader) -> List[TextNode]:
+def table_to_nodes(
+    file_directory: str, 
+    sheet_names: List[str], 
+    worksheets: List[List[List[str]]], 
+    business_request: str
+) -> List[TextNode]:
+    
+    nodes = []
+    worksheet_index = 0
+    file_name = file_directory[file_directory.rfind('/') + 1:]
+    
+    for worksheet in worksheets:
+        nodes += worksheet_to_nodes(
+            worksheet=worksheet, 
+            worksheet_index=worksheet_index, 
+            business_request=business_request, 
+            file_name=file_name, 
+            sheet_names=sheet_names
+        )
+
+        worksheet_index += 1
+        
+    return nodes
+
+def BRD_ingestion(source_folder_path: str, business_requests: List[str], reader: PyMuPDFReader) -> List[TextNode]:
     print("---------- Processing BRDs ----------")
     word_vec = []
-    for directory in directories:
-        BRD_dir = f"{in_dir}/{directory}/BRD"
+    excel_pattern = r'\.(xlsx|xlsm|xlsb)$'
+    pdf_pattern = r'\.(pdf)$'
+    for business_request in business_requests:
+        full_path = f"{source_folder_path}/{business_request}/BRD"
         try:
-            pdf_files = [file for file in os.listdir(BRD_dir) 
-                    if file.endswith(".pdf") #this assumes that all BRD files in pdf format has "BRD" in their filenames
-                    ]
-            
-            if (len(pdf_files) == 0):
-                print(f"{directory} is empty")
-                continue
-
-            #older BRDs exist in Excel formats
-            excel_files = [file for file in os.listdir(BRD_dir) if file.endswith('.xlsx') or file.endswith('xlsm') or file.endswith('xlsb') \
-                    or file.endswith('XLSX') or file.endswith('XLSM') or file.endswith('XLSB')]
-
-            used_files = []
-            
-            for file in excel_files:
-                filename = file[:file.rfind('.')]
-            
-                excel_file = pd.ExcelFile(f"{BRD_dir}/{file}")
-                sheetnames = [sheet.title for sheet in excel_file.book.worksheets if sheet.sheet_state == "visible"]
-                
-                sheets = excel_to_table(file_dir=f"{BRD_dir}/{file}", sheetnames=sheetnames, keep_text_only=keep_text_only)
-                nodes = table_to_nodes(file_dir=f"{BRD_dir}/{file}", sheetnames=sheetnames, sheets=sheets, BR=directory)
-
+            pdf_files = [file for file in os.listdir(full_path) if re.search(pdf_pattern, file, re.IGNORECASE)]
+            for file in pdf_files:
+                nodes = pdf_to_nodes(
+                    file_directory=f"{full_path}/{file}", 
+                    business_request=business_request, 
+                    file_category="BRD", 
+                    reader=reader
+                )
                 word_vec += nodes
-                used_files.append(filename)
+
+            excel_files = [file for file in os.listdir(full_path) if re.search(excel_pattern, file, re.IGNORECASE)] 
+            for file in excel_files:
+                nodes = excel_to_nodes(
+                    full_path=full_path, 
+                    file=file, 
+                    business_request=business_request
+                )
+                word_vec += nodes
+
 
             #Newer BRDs only exist in PDF forms
-            new_BRDs = [file for file in pdf_files if file[:file.rfind('.')] not in used_files]
-            for file in new_BRDs:
-                nodes = pdf_to_nodes(file_dir=f"{BRD_dir}/{file}", BR=directory, category="BRD", reader=reader)
-                word_vec += nodes
+            # new_BRDs = [file for file in pdf_files if file[:file.rfind('.')] not in used_files]
                 
         except FileNotFoundError:
-            print(f"File does not exist in {directory}")
+            print(f"File does not exist in {business_request}")
 
     return word_vec
 
-def generate_summaries(directories, BRDs):
+
+def excel_to_nodes(full_path: str, file: str, business_request: str) -> List[TextNode]:
+    excel_file = pd.ExcelFile(f"{full_path}/{file}")
+    sheet_names = [sheet.title for sheet in excel_file.book.worksheets if sheet.sheet_state == "visible"]
+                
+    worksheets = excel_to_table(file_directory=f"{full_path}/{file}", sheet_names=sheet_names)
+
+    nodes = table_to_nodes(
+        file_directory=f"{full_path}/{file}", 
+        sheet_names=sheet_names, 
+        worksheets=worksheets, 
+        business_request=business_request
+    )
+
+    return nodes
+
+
+def generate_summaries(business_requests: List[str], BRDs: List[TextNode]) -> List[TextNode]:
     summaries = []
-    for directory in directories:
-        nodes = [node for node in BRDs if node.metadata['BR'] == directory]
-        index = SummaryIndex(nodes)
-        query_engine = index.as_query_engine(
+    for business_request in business_requests:
+        nodes = [node for node in BRDs if node.metadata['BR'] == business_request]
+        summary_index = SummaryIndex(nodes)
+        query_engine = summary_index.as_query_engine(
             response_mode="tree_summarize", 
             use_async=True, 
             llm=Settings.llm 
         )
-        response = query_engine.query("Please summarize this document and provide details about the request, key contacts, required services, project timelines, constraints, funding information, project management details, network and telecom requirements, security considerations, approval processes, service line details, location of the service required, and implementation activities.")
-        node = TextNode(text=response.response, metadata={"BR": directory})
+        summary_response = query_engine.query("Please summarize this document and provide details about the request, key contacts, required services, project timelines, constraints, funding information, project management details, network and telecom requirements, security considerations, approval processes, service line details, location of the service required, and implementation activities.")
+        node = TextNode(text=summary_response.response, metadata={"BR": business_request})
         summaries.append(node)
     
     return summaries
@@ -173,9 +227,10 @@ if __name__ == "__main__":
     load_dotenv()
 
     reader = PyMuPDFReader()
-    in_dir = sys.argv[1]
-    directories = os.listdir(in_dir)
-    BRDs = BRD_ingestion(in_dir, directories, reader)
+    source_folder_path = sys.argv[1]
+    business_requests = os.listdir(source_folder_path)[55:66]
+    print(business_requests)
+    BRDs = BRD_ingestion(source_folder_path, business_requests, reader)
 
     embed_model = FastEmbedEmbedding("mixedbread-ai/mxbai-embed-large-v1")
     Settings.embed_model = embed_model
@@ -183,7 +238,7 @@ if __name__ == "__main__":
 
     client = QdrantClient(host="localhost", port=6333)
 
-    summaries = generate_summaries(directories, BRDs)
+    business_request_summaries = generate_summaries(business_requests, BRDs)
     
     summaries_vector_store = QdrantVectorStore(
         collection_name=sys.argv[2],
@@ -199,7 +254,7 @@ if __name__ == "__main__":
     details_storage_context = StorageContext.from_defaults(vector_store=details_vector_store)
 
     summaries_index = VectorStoreIndex(
-        nodes=summaries, 
+        nodes=business_request_summaries, 
         storage_context=summaries_storage_context, 
         embed_model=embed_model, 
         show_progress=True
