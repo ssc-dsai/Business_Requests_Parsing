@@ -3,7 +3,7 @@
 ## Overview
 This repository contains the tool to parse business requirements document and agreement aprovals under a directory of business requests.
 The tool is essentially a pipeline that processes data inside PDFs and Excel Files, applys embeddings, and stores them in a Qdrant Databse.
-The business requirements document pipeline also generate a summary for each business request and store them in a seperate vector database.
+The business requirements document pipeline also generates a summary for each business request and stores them in a seperate vector database.
 
 ## Installing Dependencies (Developed Under Python 3.11.4)
    ```
@@ -11,6 +11,8 @@ The business requirements document pipeline also generate a summary for each bus
    ```
 
 ## Usage
+Make sure to set your environment variable OPENAI_API_KEY to your OpenAI API key so that the summary of each business request can be generated.  
+  
 ```
 python3 file_name_of_tool path_of_BR_directory BR_summary_collection_name BR_details_collection_name
 ```  
