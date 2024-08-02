@@ -228,8 +228,7 @@ if __name__ == "__main__":
 
     reader = PyMuPDFReader()
     source_folder_path = sys.argv[1]
-    business_requests = os.listdir(source_folder_path)[55:66]
-    print(business_requests)
+    business_requests = os.listdir(source_folder_path)
     BRDs = BRD_ingestion(source_folder_path, business_requests, reader)
 
     embed_model = FastEmbedEmbedding("mixedbread-ai/mxbai-embed-large-v1")
