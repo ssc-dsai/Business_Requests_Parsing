@@ -224,10 +224,6 @@ def generate_summaries(business_requests: List[str], BRDs: List[TextNode]) -> Li
 
 if __name__ == "__main__":
     load_dotenv()
-    import phoenix as px
-    from llama_index.core import set_global_handler
-    px.launch_app()
-    set_global_handler("arize_phoenix")
 
     reader = PyMuPDFReader()
     source_folder_path = sys.argv[1]
