@@ -21,6 +21,75 @@ from qdrant_client import QdrantClient
 from llama_index.llms.openai import OpenAI
 from pandas import DataFrame
 
+
+def BRD_ingestion(source_folder_path: str, business_requests: List[str], reader: PyMuPDFReader) -> List[TextNode]:
+    print("---------- Processing BRDs ----------")
+    word_vec = []
+    excel_pattern = r'\.(xlsx|xlsm|xlsb)$'
+    pdf_pattern = r'\.(pdf)$'
+    for business_request in business_requests:
+        full_path = f"{source_folder_path}/{business_request}/BRD"
+        try:
+            pdf_files = [file for file in os.listdir(full_path) if re.search(pdf_pattern, file, re.IGNORECASE)]
+            for file in pdf_files:
+                nodes = pdf_to_nodes(
+                    file_directory=f"{full_path}/{file}", 
+                    business_request=business_request, 
+                    file_category="BRD", 
+                    reader=reader
+                )
+                word_vec += nodes
+
+            excel_files = [file for file in os.listdir(full_path) if re.search(excel_pattern, file, re.IGNORECASE)] 
+            for file in excel_files:
+                nodes = excel_to_nodes(
+                    full_path=full_path, 
+                    file=file, 
+                    business_request=business_request
+                )
+                word_vec += nodes
+
+
+            #Newer BRDs only exist in PDF forms
+            # new_BRDs = [file for file in pdf_files if file[:file.rfind('.')] not in used_files]
+                
+        except FileNotFoundError:
+            print(f"File does not exist in {business_request}")
+
+    return word_vec
+
+def excel_to_nodes(full_path: str, file: str, business_request: str) -> List[TextNode]:
+    excel_file = pd.ExcelFile(f"{full_path}/{file}")
+    sheet_names = [sheet.title for sheet in excel_file.book.worksheets if sheet.sheet_state == "visible"]
+                
+    worksheets = excel_to_table(file_directory=f"{full_path}/{file}", sheet_names=sheet_names)
+
+    nodes = table_to_nodes(
+        file_directory=f"{full_path}/{file}", 
+        sheet_names=sheet_names, 
+        worksheets=worksheets, 
+        business_request=business_request
+    )
+
+    return nodes
+
+def excel_to_table(file_directory: str, sheet_names: List[str]) -> List[List[List[str]]]:
+    worksheets = []
+    is_BRD = False
+
+    for sheet_name in sheet_names:
+        uncleaned_data = pd.read_excel(file_directory, sheet_name=sheet_name)
+        processed_data = uncleaned_data.dropna(how='all')
+        text_only_data = processed_data.map(keep_text_only)
+        worksheet, is_BRD = extract_worksheet(text_only_data)
+        worksheets.append(worksheet)
+        
+    #Return only BRDs for now
+    if (not is_BRD):
+        return []
+    
+    return worksheets
+
 def keep_text_only(cell):
     if isinstance(cell, float) and isnan(cell):
         return None
@@ -53,23 +122,30 @@ def extract_worksheet(worksheet_dataframe: DataFrame) -> Tuple[List[List[str]], 
         worksheet.append(row)
     
     return worksheet, is_BRD
-    
-def excel_to_table(file_directory: str, sheet_names: List[str]) -> List[List[List[str]]]:
-    worksheets = []
-    is_BRD = False
 
-    for sheet_name in sheet_names:
-        uncleaned_data = pd.read_excel(file_directory, sheet_name=sheet_name)
-        processed_data = uncleaned_data.dropna(how='all')
-        text_only_data = processed_data.map(keep_text_only)
-        worksheet, is_BRD = extract_worksheet(text_only_data)
-        worksheets.append(worksheet)
-        
-    #Return only BRDs for now
-    if (not is_BRD):
-        return []
+def table_to_nodes(
+    file_directory: str, 
+    sheet_names: List[str], 
+    worksheets: List[List[List[str]]], 
+    business_request: str
+) -> List[TextNode]:
     
-    return worksheets
+    nodes = []
+    worksheet_index = 0
+    file_name = file_directory[file_directory.rfind('/') + 1:]
+    
+    for worksheet in worksheets:
+        nodes += worksheet_to_nodes(
+            worksheet=worksheet, 
+            worksheet_index=worksheet_index, 
+            business_request=business_request, 
+            file_name=file_name, 
+            sheet_names=sheet_names
+        )
+
+        worksheet_index += 1
+        
+    return nodes
 
 def worksheet_to_nodes(
     worksheet: List[List[str]], 
@@ -130,83 +206,6 @@ def worksheet_to_nodes(
     
     return nodes
 
-def table_to_nodes(
-    file_directory: str, 
-    sheet_names: List[str], 
-    worksheets: List[List[List[str]]], 
-    business_request: str
-) -> List[TextNode]:
-    
-    nodes = []
-    worksheet_index = 0
-    file_name = file_directory[file_directory.rfind('/') + 1:]
-    
-    for worksheet in worksheets:
-        nodes += worksheet_to_nodes(
-            worksheet=worksheet, 
-            worksheet_index=worksheet_index, 
-            business_request=business_request, 
-            file_name=file_name, 
-            sheet_names=sheet_names
-        )
-
-        worksheet_index += 1
-        
-    return nodes
-
-def BRD_ingestion(source_folder_path: str, business_requests: List[str], reader: PyMuPDFReader) -> List[TextNode]:
-    print("---------- Processing BRDs ----------")
-    word_vec = []
-    excel_pattern = r'\.(xlsx|xlsm|xlsb)$'
-    pdf_pattern = r'\.(pdf)$'
-    for business_request in business_requests:
-        full_path = f"{source_folder_path}/{business_request}/BRD"
-        try:
-            pdf_files = [file for file in os.listdir(full_path) if re.search(pdf_pattern, file, re.IGNORECASE)]
-            for file in pdf_files:
-                nodes = pdf_to_nodes(
-                    file_directory=f"{full_path}/{file}", 
-                    business_request=business_request, 
-                    file_category="BRD", 
-                    reader=reader
-                )
-                word_vec += nodes
-
-            excel_files = [file for file in os.listdir(full_path) if re.search(excel_pattern, file, re.IGNORECASE)] 
-            for file in excel_files:
-                nodes = excel_to_nodes(
-                    full_path=full_path, 
-                    file=file, 
-                    business_request=business_request
-                )
-                word_vec += nodes
-
-
-            #Newer BRDs only exist in PDF forms
-            # new_BRDs = [file for file in pdf_files if file[:file.rfind('.')] not in used_files]
-                
-        except FileNotFoundError:
-            print(f"File does not exist in {business_request}")
-
-    return word_vec
-
-
-def excel_to_nodes(full_path: str, file: str, business_request: str) -> List[TextNode]:
-    excel_file = pd.ExcelFile(f"{full_path}/{file}")
-    sheet_names = [sheet.title for sheet in excel_file.book.worksheets if sheet.sheet_state == "visible"]
-                
-    worksheets = excel_to_table(file_directory=f"{full_path}/{file}", sheet_names=sheet_names)
-
-    nodes = table_to_nodes(
-        file_directory=f"{full_path}/{file}", 
-        sheet_names=sheet_names, 
-        worksheets=worksheets, 
-        business_request=business_request
-    )
-
-    return nodes
-
-
 def generate_summaries(business_requests: List[str], BRDs: List[TextNode]) -> List[TextNode]:
     summaries = []
     for business_request in business_requests:
@@ -225,14 +224,21 @@ def generate_summaries(business_requests: List[str], BRDs: List[TextNode]) -> Li
 
 if __name__ == "__main__":
     load_dotenv()
+    import phoenix as px
+    from llama_index.core import set_global_handler
+    px.launch_app()
+    set_global_handler("arize_phoenix")
 
     reader = PyMuPDFReader()
     source_folder_path = sys.argv[1]
-    business_requests = os.listdir(source_folder_path)[55:66]
-    print(business_requests)
+    business_requests = os.listdir(source_folder_path)
     BRDs = BRD_ingestion(source_folder_path, business_requests, reader)
 
-    embed_model = FastEmbedEmbedding("mixedbread-ai/mxbai-embed-large-v1")
+    embed_model = FastEmbedEmbedding(
+        model_name="mixedbread-ai/mxbai-embed-large-v1",
+        max_length=1024,
+        cache_dir="./embedding_cache"
+    )
     Settings.embed_model = embed_model
     Settings.llm = OpenAI(model="gpt-4o-mini", request_timeout=180, max_tokens=2048)
 
