@@ -137,10 +137,9 @@ def table_to_nodes(
     for worksheet in worksheets:
         nodes += worksheet_to_nodes(
             worksheet=worksheet, 
-            worksheet_index=worksheet_index, 
+            worksheet_name=sheet_names[worksheet_index],
             business_request=business_request, 
             file_name=file_name, 
-            sheet_names=sheet_names
         )
 
         worksheet_index += 1
@@ -149,10 +148,9 @@ def table_to_nodes(
 
 def worksheet_to_nodes(
     worksheet: List[List[str]], 
-    worksheet_index: int, 
+    worksheet_name: str, 
     business_request: str, 
     file_name: str, 
-    sheet_names: List[str]
 ) -> List[TextNode]:
     
     nodes = []
@@ -187,7 +185,7 @@ def worksheet_to_nodes(
                     "BR": business_request, 
                     "filetype": "Spreadsheet", 
                     "source": file_name, 
-                    "sheetname": sheet_names[worksheet_index]
+                    "sheetname": worksheet_name
                 }
                 nodes.append(TextNode(text=json.dumps(cleaned_sheet), metadata=metadata))
                 cleaned_sheet = {}
