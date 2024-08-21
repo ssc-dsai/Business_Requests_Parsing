@@ -10,10 +10,13 @@ The business requirements document pipeline also generates a summary for each bu
    pip install -r requirements.txt
    ```
 ## Notes
+   - **Ensure that files and folders are named properly (see images in Usage section on examples of proper structured directory)**
+   - **Older business requests before BR40000s might not work as expected due to directory structure inconsistency**
+   - **French data is excluded for simplicity but can easily be added by changing a few keywords in the code**
+   - **Parsed PDFs are not as accurate as parsed Excel files due to tool inability**
    - agreement_ingestion.py contains the code to parse agreement approvals
    - BRD_ingestion.py contains the code to parse BRDs and generate summaries based of these BRDs
    - utils.py contains common utility functions shared by some of files
-   - **ensure that files and folders are named properly (see images in Usage section on examples of proper structured directory)**
 
 ## Usage
 Make sure to set your environment variable OPENAI_API_KEY to your OpenAI API key so that the summary of each business request can be generated.  
@@ -27,7 +30,7 @@ Passing in different command line arguments allows different functionalities
 **A directory of business requests should look like the image above (exact same namings)**
 
 ![alt text](https://github.com/ssc-dsai/Business_Requests_Parsing/blob/main/example2.png)  
-**A directory of a business request should look similiar to the image above (exact same namings)**
+**A directory of a business request should look like the image above (exact same namings)**
 
 
 ## Example Usage
