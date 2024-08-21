@@ -32,10 +32,10 @@ def agreements_ingestion(
 
     reg_compile = re.compile(".*Sign Off.*")
     for business_request in business_requests:
-        full_path = f"{source_folder_path}/{business_request}"   
+        business_request_path = f"{source_folder_path}/{business_request}"   
         try:
             agreement_folder_path = None
-            for dirpath, _, _ in os.walk(full_path):
+            for dirpath, _, _ in os.walk(business_request_path):
                 if (reg_compile.match(dirpath)):
                     agreement_folder_path = dirpath
 
