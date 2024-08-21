@@ -32,9 +32,11 @@ def agreements_ingestion(
 
     reg_compile = re.compile(".*Sign Off.*")
     for business_request in business_requests:
-        business_request_path = f"{source_folder_path}/{business_request}"   
+        business_request_path = f"{source_folder_path}/{business_request}"
+
         try:
             agreement_folder_path = None
+
             for dirpath, _, _ in os.walk(business_request_path):
                 if (reg_compile.match(dirpath)):
                     agreement_folder_path = dirpath
@@ -43,8 +45,8 @@ def agreements_ingestion(
                 print(f"No signed agreement folder in {business_request}")
             else:                    
                 pdf_files = [file for file in os.listdir(agreement_folder_path) 
-                                        if (file.endswith(".pdf")) 
-                                     ]
+                             if (file.endswith(".pdf"))]
+
                 if (len(pdf_files) > 0):
                     BRs_with_agreements.append(business_request)
 

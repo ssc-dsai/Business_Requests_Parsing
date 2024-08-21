@@ -47,6 +47,7 @@ def BRD_ingestion(
         try:
             business_request_path = f"{source_folder_path}/{business_request}"  
             BRD_folder_path = None
+
             for root, _, _ in os.walk(business_request_path):
                 if (BRD_pattern.match(root)):
                     #Here assume that the first BRD like folder found contains the BRD
@@ -206,7 +207,6 @@ def table_to_nodes(
         business_request: business request number of the BRD
 
     """
-    
     nodes = []
     worksheet_index = 0
     file_name = source_file_path[source_file_path.rfind('/') + 1:]
@@ -239,12 +239,11 @@ def worksheet_to_nodes(
         file_name: name of the file which is used as metadata of the nodes
         
     """
+    section_pattern = r'-?\d+\.\d+'
     
     nodes = []
     sheet_to_dict = {row_num: row for row_num, row in enumerate(worksheet)}
     cleaned_sheet = {}
-    float_pattern = r'-?\d+\.\d+'
-
     business_request_number = ''.join(business_request.split(' '))
             
     #This section converts the table into JSON format
@@ -263,10 +262,11 @@ def worksheet_to_nodes(
             header = row[0] + ' ' + row[1]
             row_content[header] = row[2:]
             
-        floats = re.findall(float_pattern, header)
+        floats = re.findall(section_pattern, header)
         #Assume that the first number found in the header is the section number
         if len(floats) > 0:
             section = float(floats[0])
+
             #this divides the worksheet by sections
             if (section % 2 == 1.0 and section >= 3.0):
                 metadata = {
@@ -307,8 +307,8 @@ def generate_summaries(
         BRDs: a list of TextNodes that stores the information of the BRDs
         
     """
-
     summaries = []
+
     for business_request in business_requests:
         business_request_number = ''.join(business_request.split(' '))
         nodes = [node for node in BRDs if node.metadata['BR'] == business_request_number]
@@ -336,7 +336,11 @@ if __name__ == "__main__":
     reader = PyMuPDFReader()
     source_folder_path = sys.argv[1]
     business_requests = os.listdir(source_folder_path)
-    BRDs = BRD_ingestion(source_folder_path, business_requests, reader)
+    BRDs = BRD_ingestion(
+        source_folder_path=source_folder_path, 
+        business_requests=business_requests, 
+        reader=reader
+    )
 
     embed_model = FastEmbedEmbedding(
         model_name="mixedbread-ai/mxbai-embed-large-v1",
@@ -344,11 +348,18 @@ if __name__ == "__main__":
         cache_dir="./embedding_cache"
     )
     Settings.embed_model = embed_model
-    Settings.llm = OpenAI(model="gpt-4o-mini", request_timeout=180, max_tokens=2048)
+    Settings.llm = OpenAI(
+        model="gpt-4o-mini", 
+        request_timeout=180,
+        max_tokens=2048
+    )
 
     client = QdrantClient(host="localhost", port=6333)
 
-    business_request_summaries = generate_summaries(business_requests, BRDs)
+    business_request_summaries = generate_summaries(
+        business_requests=business_requests, 
+        BRDs=BRDs
+    )
     
     summaries_vector_store = QdrantVectorStore(
         collection_name=sys.argv[2],
