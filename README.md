@@ -9,6 +9,11 @@ The business requirements document pipeline also generates a summary for each bu
    ```
    pip install -r requirements.txt
    ```
+## Notes
+   - agreement_ingestion.py contains the code to parse agreement approvals
+   - BRD_ingestion.py contains the code to parse BRDs and generate summaries based of these BRDs
+   - utils.py contains common utility functions shared by some of files
+   - **ensure that files and folders are named properly (see images in Usage section on examples of proper structured directory)**
 
 ## Usage
 Make sure to set your environment variable OPENAI_API_KEY to your OpenAI API key so that the summary of each business request can be generated.  
@@ -18,8 +23,12 @@ python3 file_name_of_tool path_of_BR_directory BR_summary_collection_name BR_det
 ```  
 Passing in different command line arguments allows different functionalities  
   
-![alt text](https://github.com/ssc-dsai/Business_Requests_Parsing/blob/main/example.png)  
-A directory of business requests should look similiar to the image above
+![alt text](https://github.com/ssc-dsai/Business_Requests_Parsing/blob/main/example1.png)  
+**A directory of business requests should look like the image above (exact same namings)**
+
+![alt text](https://github.com/ssc-dsai/Business_Requests_Parsing/blob/main/example2.png)  
+**A directory of a business request should look similiar to the image above (exact same namings)**
+
 
 ## Example Usage
 ```
@@ -32,11 +41,6 @@ This command parses all the Business Requirements Document under the Output dire
 1. **Available Tools**
    - BRD_ingestion.py (To extract BRDs)
    - agreement_ingestion.py (To extract agreement approvals)
-
-## Notes
-   - agreement_ingestion.py contains the code to parse agreement approvals
-   - BRD_ingestion.py contains the code to parse BRDs and generate summaries based of these BRDs
-   - utils.py contains common utility functions shared by some of files
 
 ## To-Do
    - need a better tool/library to extract data from tables inside PDFs
