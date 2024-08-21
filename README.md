@@ -14,6 +14,7 @@ The business requirements document pipeline also generates a summary for each bu
    - **Older business requests before BR40000s might not work as expected due to directory structure inconsistency**
    - **French data is excluded for simplicity but can easily be added by changing a few keywords in the code**
    - **Parsed PDFs are not as accurate as parsed Excel files due to tool inability**
+   - **Dupilicated data may be stored in the directory due to data inconsistency**
    - agreement_ingestion.py contains the code to parse agreement approvals
    - BRD_ingestion.py contains the code to parse BRDs and generate summaries based of these BRDs
    - utils.py contains common utility functions shared by some of files
@@ -46,5 +47,6 @@ This command parses all the Business Requirements Document under the Output dire
    - agreement_ingestion.py (To extract agreement approvals)
 
 ## To-Do
-   - need a better tool/library to extract data from tables inside PDFs
-   - better chunking technique?
+   - Need a better tool/library to extract data from tables inside PDFs
+   - Better chunking technique?
+   - Use AI agent to look at document similarity and deal with inconsistent directory structure
