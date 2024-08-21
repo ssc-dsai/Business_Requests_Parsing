@@ -49,4 +49,4 @@ This command parses all the Business Requirements Document under the Output dire
 ## To-Do
    - Need a better tool/library to extract data from tables inside PDFs
    - Better chunking technique?
-   - Use AI agent to look at document similarity and deal with inconsistent directory structure
+   - Use AI agent to look at document similarity and deal with inconsistent directory structure(this will solve many problems like duplicated data, outdated data, and corrupted metadata)
