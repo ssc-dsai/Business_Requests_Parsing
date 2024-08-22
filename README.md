@@ -46,7 +46,8 @@ This command parses all the Business Requirements Document under the Output dire
    - BRD_ingestion.py (To extract BRDs)
    - agreement_ingestion.py (To extract agreement approvals)
 
-2. Modify config.json as needed to change the behaviour of the program  
+2. Modify config.json as needed to change the behaviour of the program
+   
 | Parameter    | Description |
 |--------------|-------------|
 | hello world  | bye world   |
