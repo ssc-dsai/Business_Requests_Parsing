@@ -1,0 +1,8 @@
+{
+    "model": "gpt-4o-mini",
+    "source_folder_path": "./Source",
+    "embedding_cache_directory": "./embedding_cache",
+    "summary_collection_name": "BR_Summaries",
+    "context_collection_name": "BR_JSON",
+    "agreement_collection_name": "BR_Agreements"
+}

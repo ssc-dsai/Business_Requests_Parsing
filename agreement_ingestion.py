@@ -1,6 +1,7 @@
 import re
 import os
 import sys
+import json
 
 from typing import List
 from utils import pdf_to_nodes
@@ -67,8 +68,11 @@ def agreements_ingestion(
     
 
 if __name__ == "__main__":
+    file = open("./config.json")
+    config = json.load(file)
+
     reader = PyMuPDFReader()
-    source_folder_path = sys.argv[1]
+    source_folder_path = config['source_folder_path']
     business_requests = os.listdir(source_folder_path)
     agreements = agreements_ingestion(source_folder_path, business_requests, reader)
 
@@ -76,7 +80,7 @@ if __name__ == "__main__":
     Settings.embed_model = embed_model
 
     client = QdrantClient(host="localhost", port=6333)
-    vector_store = QdrantVectorStore(collection_name=sys.argv[2], client=client)
+    vector_store = QdrantVectorStore(collection_name=config['agreement_collection_name'], client=client)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
     vector_index = VectorStoreIndex(

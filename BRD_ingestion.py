@@ -326,6 +326,8 @@ def generate_summaries(
 
 if __name__ == "__main__":
     load_dotenv()
+    file = open("./config.json")
+    config = json.load(file)
 
     #Uncomment this section to see the backstage of the pipeline
     # import phoenix as px
@@ -334,7 +336,7 @@ if __name__ == "__main__":
     # set_global_handler("arize_phoenix")
 
     reader = PyMuPDFReader()
-    source_folder_path = sys.argv[1]
+    source_folder_path = config['source_folder_path']
     business_requests = os.listdir(source_folder_path)
     BRDs = BRD_ingestion(
         source_folder_path=source_folder_path, 
@@ -345,11 +347,11 @@ if __name__ == "__main__":
     embed_model = FastEmbedEmbedding(
         model_name="mixedbread-ai/mxbai-embed-large-v1",
         max_length=1024,
-        cache_dir="./embedding_cache"
+        cache_dir=config['embedding_cache_directory']
     )
     Settings.embed_model = embed_model
     Settings.llm = OpenAI(
-        model="gpt-4o-mini", 
+        model=config['model'], 
         request_timeout=180,
         max_tokens=2048
     )
@@ -362,12 +364,12 @@ if __name__ == "__main__":
     )
     
     summaries_vector_store = QdrantVectorStore(
-        collection_name=sys.argv[2],
+        collection_name=config['summary_collection_name'],
         client=client,
     )
 
     details_vector_store = QdrantVectorStore(
-        collection_name=sys.argv[3],
+        collection_name=config['context_collection_name'],
         client=client,
     )
 
