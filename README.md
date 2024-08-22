@@ -61,6 +61,6 @@ This command parses all the Business Requirements Document
 |agreement_collection_name |This is the name of the index that stores the agreement approval of the business requests |Your choice                                                      |  
 
 ## To-Do
+   - **Use AI agent to look at document similarity and deal with inconsistent directory structure(this will solve many problems like duplicated data, outdated data, and corrupted metadata)**
    - Need a better tool/library to extract data from tables inside PDFs
    - Better chunking technique?
-   - Use AI agent to look at document similarity and deal with inconsistent directory structure(this will solve many problems like duplicated data, outdated data, and corrupted metadata)
