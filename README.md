@@ -21,13 +21,14 @@ The business requirements document pipeline also generates a summary for each bu
 
 ## Usage
 **Make sure to set your environment variable OPENAI_API_KEY to your OpenAI API key so that the summary of each business request can be generated.**  
-**Make sure that Qdrant is running in your local host.**
+**Make sure that Qdrant is running in your local host.**  
+**Pass in different parameters in the configuration file as needed.**  
   
 ```
-python3 file_name_of_tool
+python3 file_name
 ```  
-Passing in different command line arguments allows different functionalities  
-After parsing, you can visit Qdrant to check your saved data  
+  
+After parsing, you can visit Qdrant to check your saved data.  
   
 ![alt text](https://github.com/ssc-dsai/Business_Requests_Parsing/blob/main/example1.png)  
 **A directory of business requests should look like the image above (exact same namings)**
