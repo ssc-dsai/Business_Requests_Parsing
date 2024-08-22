@@ -41,10 +41,16 @@ python3 BRD_ingestion.py ./Output BR_summaries BR_Data
 
 This command parses all the Business Requirements Document under the Output directory and stores it in a Qdrant collection named "BR_Summaries" and "BR_Data"
 
-## Command Line Options
+## Configurations
 1. **Available Tools**
    - BRD_ingestion.py (To extract BRDs)
    - agreement_ingestion.py (To extract agreement approvals)
+
+2. Modify config.json as needed to change the behaviour of the program
+| Parameter    | Description |
+|--------------|-------------|
+| hello wolrd  | bye world   |
+| hello2       |         bye2|
 
 ## To-Do
    - Need a better tool/library to extract data from tables inside PDFs
