@@ -108,7 +108,7 @@ def make_template() -> PromptTemplate:
             You are an assistant for question-answering tasks. 
             Use the following pieces of retrieved context to answer the question.
             If you don't know the answer, just say that you don't know. 
-            Make sure you provide the source of your answer, which is the file that your information comes from.
+            List out all sources of your answer.
             Context information is below.
             ---------------------
             {{context_str}}
