@@ -329,11 +329,12 @@ if __name__ == "__main__":
     file = open("./config.json")
     config = json.load(file)
 
-    #Uncomment this section to see the backstage of the pipeline
+    # Uncomment this section to see the backstage of the pipeline
     # import phoenix as px
     # px.launch_app()
     # from llama_index.core import set_global_handler
     # set_global_handler("arize_phoenix")
+    # End of LLM Tracing
 
     reader = PyMuPDFReader()
     source_folder_path = config['source_folder_path']

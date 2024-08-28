@@ -12,5 +12,5 @@ llama-index-retrievers-bm25==0.1.4
 llama-index-vector-stores-qdrant==0.2.10
 llama-index-readers-file==0.1.27
 qdrant-client==1.9.2
-phoenix==0.9.1
 llama-index-callbacks-arize-phoenix==0.1.5
+arize-phoenix==4.30.1
