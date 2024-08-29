@@ -12,7 +12,7 @@ The business requirements document pipeline also generates a summary for each bu
 ## Notes
    - **Ensure that files and folders are named properly (see images in Usage section on examples of proper structured directory)**
    - **Older business requests before BR40000s might not work as expected due to directory structure inconsistency**
-   - **French data is excluded for simplicity but can easily be added by changing a few keywords in the code**
+   - **French data is excluded for simplicity but can easily be added by changing the pattern(Business Requirements Document) to identify a BRD and changing the metadata of the extracted nodes**
    - **Parsed PDFs are not as accurate as parsed Excel files due to tool inability**
    - **Dupilicated data may be stored in the directory due to data inconsistency**
    - agreement_ingestion.py contains the code to parse agreement approvals

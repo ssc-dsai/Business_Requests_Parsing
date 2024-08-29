@@ -169,6 +169,8 @@ def extract_worksheet(
     worksheet = []
 
     valid_BRD = False
+
+    # Change the pattern to French if desired
     BRD_pattern = re.compile(re.escape("Business Requirements Document"), re.IGNORECASE)
 
     for row_num in range(num_rows):

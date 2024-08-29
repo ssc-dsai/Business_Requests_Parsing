@@ -23,7 +23,10 @@ def pdf_to_nodes(
 
     file_pages = reader.load(source_file_path)
     file_name = source_file_path[source_file_path.rfind('/') + 1:]
+    
+    # Change the pattern to French if desired
     valid_pattern = re.compile(r"(?i)(agreement|business requirements document)")
+    
     business_request_number = ''.join(business_request.split(' '))
     nodes = []
     
