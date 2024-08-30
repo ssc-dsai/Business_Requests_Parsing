@@ -31,6 +31,12 @@ class Pipeline:
         load_dotenv()
         os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
+        # Uncomment this section to see the backstage of the pipeline
+        # import phoenix as px
+        # px.launch_app()
+        # from llama_index.core import set_global_handler
+        # set_global_handler("arize_phoenix")
+        # End of LLM Tracing
 
         #if running this pipeline using docker, then host should be host.docker.internal, otherwise it should be localhost
         client = qdrant_client.QdrantClient(
