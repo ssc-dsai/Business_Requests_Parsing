@@ -10,6 +10,7 @@ The business requirements document pipeline also generates a summary for each bu
    pip install -r requirements.txt
    ```
 ## Notes
+   - **Change the inferencing model to local models once available (See BR_query_engine.py and https://docs.llamaindex.ai/en/stable/examples/llm/ollama/)**
    - **Ensure that files and folders are named properly (see images in Usage section on examples of proper structured directory)**
    - **Older business requests before BR40000s might not work as expected due to directory structure inconsistency**
    - **French data is excluded for simplicity but can easily be added by changing the pattern(Business Requirements Document) to identify a BRD and changing the metadata of the extracted nodes**

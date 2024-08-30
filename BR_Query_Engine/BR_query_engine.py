@@ -20,6 +20,7 @@ from llama_index.core.retrievers import BaseRetriever
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.llms.openai import OpenAI
+from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.fastembed import FastEmbedEmbedding
 from dotenv import load_dotenv
 
@@ -32,10 +33,10 @@ class Pipeline:
         os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
         # Uncomment this section to see the backstage of the pipeline
-        import phoenix as px
-        px.launch_app()
-        from llama_index.core import set_global_handler
-        set_global_handler("arize_phoenix")
+        # import phoenix as px
+        # px.launch_app()
+        # from llama_index.core import set_global_handler
+        # set_global_handler("arize_phoenix")
         # End of LLM Tracing
 
         #if running this pipeline using docker, then host should be host.docker.internal, otherwise it should be localhost
@@ -49,6 +50,13 @@ class Pipeline:
             max_length=1024,
             cache_dir="./model"
         )
+
+        #Change to Ollama if it is available
+        # llm = Ollama(
+        #     model="llama3.1:latest", 
+        #     request_timeout=180, 
+        # )
+        #End of Ollama Models
 
         llm = OpenAI(
             model=os.getenv("OPENAI_MODEL"), 
